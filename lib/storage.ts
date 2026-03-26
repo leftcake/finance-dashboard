@@ -1,3 +1,4 @@
+// lib/storage.ts
 import { Transaction, Goal } from './types';
 import { getCurrentUser } from './auth';
 
@@ -40,7 +41,6 @@ export const saveGoals = (goals: Goal[]): void => {
   localStorage.setItem(key, JSON.stringify(goals));
 };
 
-// 清除当前用户的所有数据
 export const clearUserData = (): void => {
   if (typeof window === 'undefined') return;
   const prefix = getStoragePrefix();
