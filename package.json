@@ -9,20 +9,47 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.100.0",
+    "bcryptjs": "^3.0.3",
     "chart.js": "^4.5.1",
     "next": "16.2.1",
+    "next-auth": "^4.24.13",
+    "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.19.37",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.27",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
-    "tailwindcss": "^4",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5"
-  }
+  },
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leftcake/finance-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/leftcake/finance-dashboard/issues"
+  },
+  "homepage": "https://github.com/leftcake/finance-dashboard#readme"
 }
