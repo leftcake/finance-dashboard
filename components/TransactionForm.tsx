@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { Transaction, Category } from '@/lib/types';
+import {
+  INVESTMENT_DESC_PREFIX,
+  parseInvestmentDescription,
+} from '@/lib/investment-marker';
 
 interface TransactionFormProps {
   onAdd: (transaction: Omit<Transaction, 'id'>) => void;
@@ -16,11 +20,12 @@ export default function TransactionForm({ onAdd }: TransactionFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amtNum = parseFloat(amount);
-    if (!date || !desc || isNaN(amtNum) || amtNum <= 0) {
+    const { description, isInvestment } = parseInvestmentDescription(desc);
+    if (!date || !description || isNaN(amtNum) || amtNum <= 0) {
       alert('Please fill in all fields with a valid amount.');
       return;
     }
-    onAdd({ date, desc, cat, amt: amtNum });
+    onAdd({ date, desc: description, cat, amt: amtNum, isInvestment });
     setDesc('');
     setAmount('');
   };
@@ -30,6 +35,14 @@ export default function TransactionForm({ onAdd }: TransactionFormProps) {
       <div className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide mb-3">
         Add transaction
       </div>
+      <p className="mb-3 text-xs text-[var(--text-secondary)]">
+        投资相关流水：在描述前加字符{' '}
+        <code className="rounded bg-[var(--bg-secondary)] px-1 py-0.5 font-mono text-[var(--text-primary)]">
+          {INVESTMENT_DESC_PREFIX}
+        </code>
+        （例如 <code className="font-mono">{INVESTMENT_DESC_PREFIX}买入基金</code>
+        ），会与日常储蓄/支出分开统计；保存时不会保留该符号。
+      </p>
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
@@ -48,7 +61,7 @@ export default function TransactionForm({ onAdd }: TransactionFormProps) {
               type="text"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="e.g., Salary, Rent..."
+              placeholder={`日常：Salary；投资：${INVESTMENT_DESC_PREFIX}ETF定投`}
               className="w-full h-9 px-2.5 text-sm bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border)] rounded-md focus:outline-none focus:border-[var(--border-md)] focus:ring-1 focus:ring-[var(--border-md)]"
               required
             />

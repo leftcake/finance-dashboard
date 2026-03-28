@@ -4,6 +4,8 @@ export interface Transaction {
   desc: string;
   cat: 'income' | 'expense' | 'savings';
   amt: number;
+  /** 投资相关流水（与日常储蓄/支出分账） */
+  isInvestment?: boolean;
 }
 
 export interface Goal {
@@ -15,10 +17,18 @@ export interface Goal {
 
 export type Category = 'income' | 'expense' | 'savings';
 
+/** Monthly aggregates for charts (category = income | expense | savings). */
 export interface MonthlyData {
   month: string;
   income: number;
   expense: number;
+  savings: number;
+}
+
+export interface BreakdownSlice {
+  name: string;
+  value: number;
+  color: string;
 }
 
 export interface User {

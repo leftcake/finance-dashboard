@@ -46,7 +46,17 @@ export default function TransactionList({ transactions, onDelete }: TransactionL
                 {tx.date}
               </td>
               <td className="p-1.5 border-b border-[var(--border)]">
-                {tx.desc}
+                <span className="inline-flex flex-wrap items-center gap-1.5">
+                  {tx.isInvestment && (
+                    <span
+                      className="shrink-0 rounded-full bg-[#EDE9FE] px-2 py-0.5 text-xs font-medium text-[#5B21B6] dark:bg-violet-950/50 dark:text-violet-300"
+                      title="投资相关"
+                    >
+                      投资
+                    </span>
+                  )}
+                  <span>{tx.desc}</span>
+                </span>
               </td>
               <td className="p-1.5 border-b border-[var(--border)]">
                 <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${

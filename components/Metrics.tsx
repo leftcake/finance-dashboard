@@ -1,17 +1,29 @@
 'use client';
 
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, type MonthMetrics } from '@/lib/utils';
 
-interface MetricsProps {
-  income: number;
-  expense: number;
-  savings: number;
-  balance: number;
-}
+type MetricsProps = MonthMetrics;
 
-export default function Metrics({ income, expense, savings, balance }: MetricsProps) {
+export default function Metrics({
+  income,
+  expense,
+  savings,
+  balance,
+  savingsRegular,
+  savingsInvestment,
+  expenseRegular,
+  expenseInvestment,
+  incomeRegular,
+  incomeInvestment,
+}: MetricsProps) {
+  const showSplit =
+    savingsInvestment > 0 ||
+    expenseInvestment > 0 ||
+    incomeInvestment > 0;
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-6">
+    <div className="mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
       {/* Income - 绿色渐变 */}
       <div className="metric-card border-l-4 border-l-[#1D9E75] hover:shadow-md transition-all duration-200">
         <div className="text-xs text-[var(--text-secondary)] mb-1.5">Income</div>
@@ -61,6 +73,50 @@ export default function Metrics({ income, expense, savings, balance }: MetricsPr
           Saved this month
         </div>
       </div>
+    </div>
+
+    {showSplit && (
+      <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)]/40 p-4">
+        <div className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--text-secondary)]">
+          本月分账 · 日常 vs 投资（^）
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <div className="text-xs text-[var(--text-secondary)]">储蓄</div>
+            <div className="mt-1 text-sm">
+              <span className="text-[var(--text-primary)]">日常 </span>
+              <span className="font-semibold text-[#378ADD]">{formatCurrency(savingsRegular)}</span>
+            </div>
+            <div className="mt-0.5 text-sm">
+              <span className="text-[var(--text-primary)]">投资 </span>
+              <span className="font-semibold text-[#5B21B6]">{formatCurrency(savingsInvestment)}</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--text-secondary)]">支出</div>
+            <div className="mt-1 text-sm">
+              <span className="text-[var(--text-primary)]">日常 </span>
+              <span className="font-semibold text-[#D85A30]">{formatCurrency(expenseRegular)}</span>
+            </div>
+            <div className="mt-0.5 text-sm">
+              <span className="text-[var(--text-primary)]">投资 </span>
+              <span className="font-semibold text-[#7C3AED]">{formatCurrency(expenseInvestment)}</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--text-secondary)]">收入</div>
+            <div className="mt-1 text-sm">
+              <span className="text-[var(--text-primary)]">日常 </span>
+              <span className="font-semibold text-[#1D9E75]">{formatCurrency(incomeRegular)}</span>
+            </div>
+            <div className="mt-0.5 text-sm">
+              <span className="text-[var(--text-primary)]">投资 </span>
+              <span className="font-semibold text-[#047857]">{formatCurrency(incomeInvestment)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }

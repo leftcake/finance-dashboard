@@ -4,13 +4,17 @@ export const loadTransactions = async (userId: string): Promise<Transaction[]> =
   try {
     const response = await fetch(`/api/transactions?userId=${userId}`)
     const data = await response.json()
-    
+    if (!response.ok || !Array.isArray(data)) {
+      return []
+    }
+
     return data.map((t: any) => ({
       id: t.id,
       date: t.date.split('T')[0],
       desc: t.description,
       cat: t.category,
       amt: t.amount,
+      isInvestment: Boolean(t.isInvestment),
     }))
   } catch (error) {
     console.error('Error loading transactions:', error)
@@ -30,13 +34,19 @@ export const addTransaction = async (
     })
     
     const data = await response.json()
-    
+
+    if (!response.ok || !data?.id || typeof data?.date !== 'string') {
+      console.error('Error adding transaction:', data?.error ?? response.statusText)
+      return null
+    }
+
     return {
       id: data.id,
       date: data.date.split('T')[0],
       desc: data.description,
       cat: data.category,
       amt: data.amount,
+      isInvestment: Boolean(data.isInvestment),
     }
   } catch (error) {
     console.error('Error adding transaction:', error)

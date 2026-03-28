@@ -32,9 +32,9 @@ export async function GET(request: Request) {
 // POST - 添加交易
 export async function POST(request: Request) {
   try {
-    const { userId, date, desc, cat, amt } = await request.json()
+    const { userId, date, desc, cat, amt, isInvestment } = await request.json()
 
-    if (!userId || !date || !desc || !cat || !amt) {
+    if (!userId || !date || !desc || !cat || amt === undefined || amt === null) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         description: desc,
         category: cat,
         amount: amt,
+        isInvestment: Boolean(isInvestment),
       }
     })
 
