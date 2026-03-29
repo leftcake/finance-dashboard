@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth';
+import { fetchSessionUser } from '@/lib/auth';
 import { profileSlugFromUser } from '@/lib/user-slug';
 
 export default function HomePage() {
@@ -11,12 +11,19 @@ export default function HomePage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (u) {
-      router.replace(`/${profileSlugFromUser(u)}`);
-    } else {
-      setChecking(false);
-    }
+    let cancelled = false;
+    (async () => {
+      const u = await fetchSessionUser();
+      if (cancelled) return;
+      if (u) {
+        router.replace(`/${profileSlugFromUser(u)}`);
+      } else {
+        setChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (checking) {

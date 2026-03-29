@@ -1,44 +1,59 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getSessionUserIdFromCookies, unauthorized } from '@/lib/session'
 
-// GET - 获取所有交易
-export async function GET(request: Request) {
+type TxCategory = 'income' | 'expense' | 'savings'
+
+async function resolveGoalIdForSavings(
+  userId: string,
+  category: TxCategory,
+  goalId: string | null | undefined
+): Promise<string | null> {
+  if (category !== 'savings') return null
+  if (!goalId) return null
+  const g = await prisma.goal.findFirst({ where: { id: goalId, userId } })
+  if (!g) return null
+  return goalId
+}
+
+// GET — list for signed-in user only
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-
+    const userId = await getSessionUserIdFromCookies()
     if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID required' },
-        { status: 400 }
-      )
+      return unauthorized()
     }
 
     const transactions = await prisma.transaction.findMany({
       where: { userId },
-      orderBy: { date: 'desc' }
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     })
 
     return NextResponse.json(transactions)
   } catch (error) {
     console.error('Error loading transactions:', error)
-    return NextResponse.json(
-      { error: 'Failed to load transactions' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to load transactions' }, { status: 500 })
   }
 }
 
-// POST - 添加交易
+// POST — create
 export async function POST(request: Request) {
   try {
-    const { userId, date, desc, cat, amt, isInvestment } = await request.json()
+    const userId = await getSessionUserIdFromCookies()
+    if (!userId) {
+      return unauthorized()
+    }
 
-    if (!userId || !date || !desc || !cat || amt === undefined || amt === null) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    const { date, desc, cat, amt, isInvestment, goalId } = await request.json()
+
+    if (!date || !desc || !cat || amt === undefined || amt === null) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    const category = cat as TxCategory
+    const resolvedGoalId = await resolveGoalIdForSavings(userId, category, goalId ?? null)
+    if (category === 'savings' && goalId && !resolvedGoalId) {
+      return NextResponse.json({ error: 'Invalid savings goal' }, { status: 400 })
     }
 
     const transaction = await prisma.transaction.create({
@@ -46,46 +61,88 @@ export async function POST(request: Request) {
         userId,
         date: new Date(date),
         description: desc,
-        category: cat,
+        category,
         amount: amt,
         isInvestment: Boolean(isInvestment),
-      }
+        goalId: resolvedGoalId,
+      } as Parameters<typeof prisma.transaction.create>[0]['data'],
     })
 
     return NextResponse.json(transaction, { status: 201 })
   } catch (error) {
     console.error('Error adding transaction:', error)
-    return NextResponse.json(
-      { error: 'Failed to add transaction' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to add transaction' }, { status: 500 })
   }
 }
 
-// DELETE - 删除交易
+// PUT — update (editable history)
+export async function PUT(request: Request) {
+  try {
+    const userId = await getSessionUserIdFromCookies()
+    if (!userId) {
+      return unauthorized()
+    }
+
+    const { id, date, desc, cat, amt, isInvestment, goalId } = await request.json()
+
+    if (!id || !date || !desc || !cat || amt === undefined || amt === null) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+
+    const existing = await prisma.transaction.findFirst({
+      where: { id, userId },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const category = cat as TxCategory
+    const resolvedGoalId = await resolveGoalIdForSavings(userId, category, goalId ?? null)
+    if (category === 'savings' && goalId && !resolvedGoalId) {
+      return NextResponse.json({ error: 'Invalid savings goal' }, { status: 400 })
+    }
+
+    const transaction = await prisma.transaction.update({
+      where: { id },
+      data: {
+        date: new Date(date),
+        description: desc,
+        category,
+        amount: amt,
+        isInvestment: Boolean(isInvestment),
+        goalId: category === 'savings' ? resolvedGoalId : null,
+      } as Parameters<typeof prisma.transaction.update>[0]['data'],
+    })
+
+    return NextResponse.json(transaction)
+  } catch (error) {
+    console.error('Error updating transaction:', error)
+    return NextResponse.json({ error: 'Failed to update transaction' }, { status: 500 })
+  }
+}
+
+// DELETE
 export async function DELETE(request: Request) {
   try {
+    const userId = await getSessionUserIdFromCookies()
+    if (!userId) {
+      return unauthorized()
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    const userId = searchParams.get('userId')
 
-    if (!id || !userId) {
-      return NextResponse.json(
-        { error: 'Transaction ID and User ID required' },
-        { status: 400 }
-      )
+    if (!id) {
+      return NextResponse.json({ error: 'Transaction ID required' }, { status: 400 })
     }
 
     await prisma.transaction.delete({
-      where: { id, userId }
+      where: { id, userId },
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting transaction:', error)
-    return NextResponse.json(
-      { error: 'Failed to delete transaction' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Failed to delete transaction' }, { status: 500 })
   }
 }

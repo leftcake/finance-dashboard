@@ -4,17 +4,24 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthForm from '@/components/auth/AuthForm';
-import { getCurrentUser } from '@/lib/auth';
+import { fetchSessionUser } from '@/lib/auth';
 import { profileSlugFromUser } from '@/lib/user-slug';
 
 export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (u) {
-      router.replace(`/${profileSlugFromUser(u)}`);
-    }
+    let cancelled = false;
+    (async () => {
+      const u = await fetchSessionUser();
+      if (cancelled) return;
+      if (u) {
+        router.replace(`/${profileSlugFromUser(u)}`);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return (

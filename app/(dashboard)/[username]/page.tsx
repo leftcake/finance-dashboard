@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import DashboardClient, {
   type DashboardUser,
 } from '@/components/dashboard/DashboardClient';
-import { getCurrentUser } from '@/lib/auth';
+import { fetchSessionUser } from '@/lib/auth';
 import { profileSlugFromUser, slugMatchesUser } from '@/lib/user-slug';
 
 export default function UserDashboardRoute() {
@@ -16,21 +16,28 @@ export default function UserDashboardRoute() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) {
-      router.replace('/login');
-      return;
-    }
-    if (!slugMatchesUser(slug, u)) {
-      router.replace(`/${profileSlugFromUser(u)}`);
-      return;
-    }
-    setUser({
-      id: u.id,
-      email: u.email,
-      username: u.username,
-    });
-    setReady(true);
+    let cancelled = false;
+    (async () => {
+      const u = await fetchSessionUser();
+      if (cancelled) return;
+      if (!u) {
+        router.replace('/login');
+        return;
+      }
+      if (!slugMatchesUser(slug, u)) {
+        router.replace(`/${profileSlugFromUser(u)}`);
+        return;
+      }
+      setUser({
+        id: u.id,
+        email: u.email,
+        username: u.username,
+      });
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [slug, router]);
 
   if (!ready || !user) {

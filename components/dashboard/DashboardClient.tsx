@@ -7,15 +7,15 @@ import TransactionForm from '@/components/TransactionForm';
 import Charts from '@/components/Charts';
 import TransactionList from '@/components/TransactionList';
 import Goals from '@/components/Goals';
-import { Transaction, Goal } from '@/lib/types';
-import { logout as clearStoredUser } from '@/lib/auth';
+import { Transaction, Goal, type TransactionSaveInput } from '@/lib/types';
+import { logoutSession } from '@/lib/auth';
 import {
   loadTransactions,
   addTransaction,
+  updateTransaction,
   deleteTransaction,
   loadGoals,
   addGoal,
-  updateGoal,
   deleteGoal,
 } from '@/lib/database';
 import {
@@ -41,12 +41,9 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadUserData = useCallback(async (userId: string) => {
+  const loadUserData = useCallback(async () => {
     try {
-      const [loadedTxs, loadedGoals] = await Promise.all([
-        loadTransactions(userId),
-        loadGoals(userId),
-      ]);
+      const [loadedTxs, loadedGoals] = await Promise.all([loadTransactions(), loadGoals()]);
       setTransactions(loadedTxs);
       setGoals(loadedGoals);
       const months = getAvailableMonths(loadedTxs);
@@ -64,11 +61,11 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
 
   useEffect(() => {
     setLoading(true);
-    loadUserData(user.id);
+    loadUserData();
   }, [user.id, loadUserData]);
 
-  const handleLogout = () => {
-    clearStoredUser();
+  const handleLogout = async () => {
+    await logoutSession();
     router.replace('/login');
   };
 
@@ -80,14 +77,16 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
   const breakdownDataAll = prepareBreakdownData(
     metrics.income,
     metrics.expense,
-    metrics.savings
+    metrics.savings,
+    metrics.investment
   );
   const investmentMonthTxs = filteredTransactions.filter((t) => t.isInvestment);
   const invMonthMetrics = calculateMetrics(investmentMonthTxs);
   const breakdownDataInvestment = prepareBreakdownData(
     invMonthMetrics.income,
     invMonthMetrics.expense,
-    invMonthMetrics.savings
+    invMonthMetrics.savings,
+    invMonthMetrics.investment
   );
   const viewingMonthLabel = selectedMonth
     ? new Date(selectedMonth + '-01').toLocaleDateString('en-SG', {
@@ -96,46 +95,63 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
       })
     : '';
 
-  const handleAddTransaction = async (tx: Omit<Transaction, 'id'>) => {
-    const newTx = await addTransaction(user.id, tx);
+  const handleAddTransaction = async (tx: TransactionSaveInput) => {
+    const newTx = await addTransaction(tx);
     if (newTx) {
       setTransactions((prev) => {
         const next = [newTx, ...prev];
         setAvailableMonths(getAvailableMonths(next));
         return next;
       });
+      setGoals(await loadGoals());
     }
+  };
+
+  const handleUpdateTransaction = async (
+    id: string,
+    data: TransactionSaveInput
+  ): Promise<boolean> => {
+    if (!data.desc?.trim() || data.amt <= 0) {
+      alert('Description and a positive amount are required.');
+      return false;
+    }
+    const updated = await updateTransaction(id, data);
+    if (!updated) {
+      alert('Could not save changes.');
+      return false;
+    }
+    setTransactions((prev) => {
+      const next = prev.map((t) => (t.id === id ? updated : t));
+      setAvailableMonths(getAvailableMonths(next));
+      return next;
+    });
+    setGoals(await loadGoals());
+    return true;
   };
 
   const handleDeleteTransaction = async (id: string) => {
     if (!confirm('Delete this transaction?')) return;
-    const success = await deleteTransaction(user.id, id);
+    const success = await deleteTransaction(id);
     if (success) {
-      setTransactions((t) => t.filter((x) => x.id !== id));
+      setTransactions((t) => {
+        const next = t.filter((x) => x.id !== id);
+        setAvailableMonths(getAvailableMonths(next));
+        return next;
+      });
+      setGoals(await loadGoals());
     }
   };
 
   const handleAddGoal = async (name: string, target: number) => {
-    const newGoal = await addGoal(user.id, name, target);
+    const newGoal = await addGoal(name, target);
     if (newGoal) {
       setGoals((g) => [newGoal, ...g]);
     }
   };
 
-  const handleAddToGoal = async (id: string, amount: number) => {
-    const goal = goals.find((g) => g.id === id);
-    if (goal) {
-      const newSaved = Math.min(goal.target, goal.saved + amount);
-      const success = await updateGoal(user.id, id, newSaved);
-      if (success) {
-        setGoals((gs) => gs.map((g) => (g.id === id ? { ...g, saved: newSaved } : g)));
-      }
-    }
-  };
-
   const handleDeleteGoal = async (id: string) => {
     if (!confirm('Remove this goal?')) return;
-    const success = await deleteGoal(user.id, id);
+    const success = await deleteGoal(id);
     if (success) {
       setGoals((g) => g.filter((x) => x.id !== id));
     }
@@ -187,14 +203,7 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
       </div>
 
       <Metrics {...metrics} />
-      <TransactionForm onAdd={handleAddTransaction} />
-      <Charts
-        monthlyDataAll={monthlyDataAll}
-        breakdownDataAll={breakdownDataAll}
-        monthlyDataInvestment={monthlyDataInvestment}
-        breakdownDataInvestment={breakdownDataInvestment}
-        viewingMonthLabel={viewingMonthLabel}
-      />
+      <TransactionForm goals={goals} onAdd={handleAddTransaction} />
 
       <div className="card mb-6">
         <div className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--text-secondary)]">
@@ -202,15 +211,20 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
         </div>
         <TransactionList
           transactions={filteredTransactions}
+          goals={goals}
           onDelete={handleDeleteTransaction}
+          onUpdate={handleUpdateTransaction}
         />
       </div>
 
-      <Goals
-        goals={goals}
-        onAdd={handleAddGoal}
-        onAddSavings={handleAddToGoal}
-        onDelete={handleDeleteGoal}
+      <Goals goals={goals} onAdd={handleAddGoal} onDelete={handleDeleteGoal} />
+
+      <Charts
+        monthlyDataAll={monthlyDataAll}
+        breakdownDataAll={breakdownDataAll}
+        monthlyDataInvestment={monthlyDataInvestment}
+        breakdownDataInvestment={breakdownDataInvestment}
+        viewingMonthLabel={viewingMonthLabel}
       />
     </div>
   );

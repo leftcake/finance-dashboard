@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { attachSessionCookie, createUserSession } from '@/lib/session'
 
 export async function POST(request: Request) {
   try {
@@ -51,19 +52,21 @@ export async function POST(request: Request) {
       }
     })
 
-    return NextResponse.json(
-      { 
-        success: true, 
+    const sessionToken = await createUserSession(user.id)
+    const res = NextResponse.json(
+      {
+        success: true,
         message: 'Registration successful',
         user: {
           id: user.id,
           email: user.email,
           username: user.username,
           name: user.name,
-        }
+        },
       },
       { status: 201 }
     )
+    return attachSessionCookie(res, sessionToken)
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json(

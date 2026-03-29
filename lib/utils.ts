@@ -1,5 +1,21 @@
 import { Transaction, MonthlyData } from './types';
 
+/** 列表：按记账时间（创建时间）最新在前 */
+export function sortTransactionsByRecordedAt(transactions: Transaction[]): Transaction[] {
+  return [...transactions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function formatTransactionRecordedAt(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'medium',
+    });
+  } catch {
+    return '—';
+  }
+}
+
 export const formatCurrency = (amount: number): string => {
   const sign = amount < 0 ? '-' : '';
   return sign + 'S$' + Math.abs(amount).toLocaleString('en-SG', {
@@ -23,16 +39,10 @@ export const filterByMonth = (txs: Transaction[], month: string): Transaction[] 
 export const calculateMetrics = (transactions: Transaction[]) => {
   const inv = (t: Transaction) => !!t.isInvestment;
 
+  /** 收入：全部入账（含工资、奖金、投资收益等） */
   const income = transactions
     .filter((t) => t.cat === 'income')
     .reduce((sum, t) => sum + t.amt, 0);
-  const expense = transactions
-    .filter((t) => t.cat === 'expense')
-    .reduce((sum, t) => sum + t.amt, 0);
-  const savings = transactions
-    .filter((t) => t.cat === 'savings')
-    .reduce((sum, t) => sum + t.amt, 0);
-  const balance = income - expense - savings;
 
   const incomeInvestment = transactions
     .filter((t) => t.cat === 'income' && inv(t))
@@ -42,17 +52,32 @@ export const calculateMetrics = (transactions: Transaction[]) => {
   const expenseInvestment = transactions
     .filter((t) => t.cat === 'expense' && inv(t))
     .reduce((s, t) => s + t.amt, 0);
-  const expenseRegular = expense - expenseInvestment;
+  /** 支出：日常花销（餐饮、购物、房租等），不含标记为投资的支出 */
+  const expenseRegular = transactions
+    .filter((t) => t.cat === 'expense' && !inv(t))
+    .reduce((s, t) => s + t.amt, 0);
 
   const savingsInvestment = transactions
     .filter((t) => t.cat === 'savings' && inv(t))
     .reduce((s, t) => s + t.amt, 0);
-  const savingsRegular = savings - savingsInvestment;
+  /** 储蓄：日常存钱（定期、应急金等），不含标记为投资的储蓄 */
+  const savingsRegular = transactions
+    .filter((t) => t.cat === 'savings' && !inv(t))
+    .reduce((s, t) => s + t.amt, 0);
+
+  /** 投资流出：从支出/储蓄划出、标记为投资的部分（股票、基金、理财等） */
+  const investment = expenseInvestment + savingsInvestment;
+
+  /** 卡片与公式用「日常支出 / 日常储蓄」；净余额含四类 */
+  const expense = expenseRegular;
+  const savings = savingsRegular;
+  const balance = income - expenseRegular - savingsRegular - investment;
 
   return {
     income,
     expense,
     savings,
+    investment,
     balance,
     incomeRegular,
     incomeInvestment,
@@ -65,51 +90,69 @@ export const calculateMetrics = (transactions: Transaction[]) => {
 
 export type MonthMetrics = ReturnType<typeof calculateMetrics>;
 
-const sumByCat = (txs: Transaction[]) => ({
-  income: txs.filter((t) => t.cat === 'income').reduce((s, t) => s + t.amt, 0),
-  expense: txs.filter((t) => t.cat === 'expense').reduce((s, t) => s + t.amt, 0),
-  savings: txs.filter((t) => t.cat === 'savings').reduce((s, t) => s + t.amt, 0),
-});
+/** 与 calculateMetrics 一致的月度四桶（概览图用） */
+const sumMonthlyBuckets = (txs: Transaction[]) => {
+  const inv = (t: Transaction) => !!t.isInvestment;
+  const income = txs.filter((t) => t.cat === 'income').reduce((s, t) => s + t.amt, 0);
+  const expense = txs
+    .filter((t) => t.cat === 'expense' && !inv(t))
+    .reduce((s, t) => s + t.amt, 0);
+  const savings = txs
+    .filter((t) => t.cat === 'savings' && !inv(t))
+    .reduce((s, t) => s + t.amt, 0);
+  const investment = txs
+    .filter((t) => inv(t) && (t.cat === 'expense' || t.cat === 'savings'))
+    .reduce((s, t) => s + t.amt, 0);
+  return { income, expense, savings, investment };
+};
 
-/** All transactions: full picture per month (income + expense + savings). */
+/** 全量流水：每月 收入 / 日常支出 / 日常储蓄 / 投资流出 */
 export const prepareMonthlyChartData = (
   transactions: Transaction[],
   months: string[]
 ): MonthlyData[] => {
   return months.map((month) => {
     const monthTxs = filterByMonth(transactions, month);
-    const { income, expense, savings } = sumByCat(monthTxs);
+    const { income, expense, savings, investment } = sumMonthlyBuckets(monthTxs);
     return {
       month: new Date(month).toLocaleDateString('en-SG', { month: 'short' }),
       income,
       expense,
       savings,
+      investment,
     };
   });
 };
 
-/** Only ^ / investment-tagged rows; same three categories. */
+/** 仅标记为投资的流水：同上四桶口径（在该子集上） */
 export const prepareMonthlyInvestmentChartData = (
   transactions: Transaction[],
   months: string[]
 ): MonthlyData[] => {
   return months.map((month) => {
     const monthTxs = filterByMonth(transactions, month).filter((t) => t.isInvestment);
-    const { income, expense, savings } = sumByCat(monthTxs);
+    const { income, expense, savings, investment } = sumMonthlyBuckets(monthTxs);
     return {
       month: new Date(month).toLocaleDateString('en-SG', { month: 'short' }),
       income,
       expense,
       savings,
+      investment,
     };
   });
 };
 
-export const prepareBreakdownData = (income: number, expense: number, savings: number) => {
+export const prepareBreakdownData = (
+  income: number,
+  expense: number,
+  savings: number,
+  investment: number
+) => {
   return [
-    { name: 'Income', value: income, color: '#5DCAA5' },
-    { name: 'Expense', value: expense, color: '#F0997B' },
-    { name: 'Savings', value: savings, color: '#85B7EB' },
+    { name: '收入 Income', value: income, color: '#5DCAA5' },
+    { name: '支出 Expense', value: expense, color: '#F0997B' },
+    { name: '储蓄 Savings', value: savings, color: '#85B7EB' },
+    { name: '投资 Investment', value: investment, color: '#7C3AED' },
   ].filter((item) => item.value > 0);
 };
 

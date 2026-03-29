@@ -19,6 +19,7 @@ const CAT_COLORS = {
   income: '#5DCAA5',
   expense: '#F0997B',
   savings: '#85B7EB',
+  investment: '#7C3AED',
 } as const;
 
 /** Fixed chart height avoids % chains; initialDimension avoids Recharts -1 / ResizeObserver glitches in grid/flex. */
@@ -81,7 +82,7 @@ export default function Charts({
   };
 
   const hasInvestmentSeries = monthlyDataInvestment.some(
-    (d) => d.income + d.expense + d.savings > 0
+    (d) => d.income + d.expense + d.savings + d.investment > 0
   );
 
   const placeholderGrid = (
@@ -142,21 +143,27 @@ export default function Charts({
               <Tooltip formatter={formatTooltipValue} contentStyle={tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Bar
-                name="Income"
+                name="收入 Income"
                 dataKey="income"
                 fill={CAT_COLORS.income}
                 radius={[4, 4, 0, 0]}
               />
               <Bar
-                name="Expense"
+                name="支出 Expense"
                 dataKey="expense"
                 fill={CAT_COLORS.expense}
                 radius={[4, 4, 0, 0]}
               />
               <Bar
-                name="Savings"
+                name="储蓄 Savings"
                 dataKey="savings"
                 fill={CAT_COLORS.savings}
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar
+                name="投资 Investment"
+                dataKey="investment"
+                fill={CAT_COLORS.investment}
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -231,15 +238,14 @@ export default function Charts({
           Overview — all activity
         </h2>
         <p className="mb-4 max-w-3xl text-xs text-[var(--text-secondary)]">
-          Income, Expense, and Savings use your category labels. Totals include both everyday and
-          investment (^) flows, so all spending recorded as Expense appears here together with the
-          rest.
+          收入 / 支出 / 储蓄 / 投资 四桶与顶部指标一致：日常支出与储蓄不含标记投资；投资柱为标记投资（^）的支出+储蓄
+          合计；投资收益计入收入柱。
         </p>
         <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
           <MonthlyBars
             data={monthlyDataAll}
             title="Monthly — all categories"
-            subtitle="Last months: Income, Expense, Savings (everything)"
+            subtitle="近月：收入、日常支出、日常储蓄、投资流出"
           />
           <BreakdownPie
             data={breakdownDataAll}
@@ -254,16 +260,12 @@ export default function Charts({
         <h2 className="mb-3 text-sm font-medium text-[var(--text-primary)]">
           Investment (^) only
         </h2>
-        <p className="mb-4 max-w-3xl text-xs text-[var(--text-secondary)]">
-          Same three categories, filtered to rows you marked with ^ in the description. Compare with
-          the overview above to see how much of each category is investment-specific.
-        </p>
         <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
           {hasInvestmentSeries ? (
             <MonthlyBars
               data={monthlyDataInvestment}
               title="Monthly — investment only"
-              subtitle="Income, Expense, Savings (^ only)"
+              subtitle=""
             />
           ) : (
             <div className="card min-w-0">
@@ -271,7 +273,7 @@ export default function Charts({
                 Monthly — investment only
               </div>
               <p className="mb-3 text-xs text-[var(--text-secondary)]">
-                Income, Expense, Savings (^ only)
+                收入、支出、储蓄、投资（仅标记 ^）
               </p>
               <div
                 className="flex items-center justify-center px-4 text-center text-sm text-[var(--text-secondary)]"

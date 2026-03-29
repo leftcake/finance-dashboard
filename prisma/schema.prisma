@@ -33,22 +33,26 @@ model Transaction {
   category       Category
   amount         Float
   isInvestment   Boolean  @default(false)
+  goalId         String?
+  goal           Goal?    @relation(fields: [goalId], references: [id], onDelete: SetNull)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   @@index([userId])
   @@index([date])
+  @@index([goalId])
 }
 
 model Goal {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  target    Float
-  saved     Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  target       Float
+  saved        Float         @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
 
   @@index([userId])
 }

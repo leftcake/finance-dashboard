@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { attachSessionCookie, createUserSession } from '@/lib/session'
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
       )
     }
 
-    return NextResponse.json({
+    const sessionToken = await createUserSession(user.id)
+    const res = NextResponse.json({
       success: true,
       message: 'Login successful',
       user: {
@@ -43,8 +45,9 @@ export async function POST(request: Request) {
         email: user.email,
         username: user.username,
         name: user.name,
-      }
+      },
     })
+    return attachSessionCookie(res, sessionToken)
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(

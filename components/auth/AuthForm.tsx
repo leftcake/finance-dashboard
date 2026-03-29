@@ -19,7 +19,6 @@ export default function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   const goToDashboard = (user: { id: string; email: string; username?: string | null }) => {
-    localStorage.setItem('currentUser', JSON.stringify(user));
     router.replace(`/${profileSlugFromUser(user)}`);
   };
 
@@ -51,16 +50,11 @@ export default function AuthForm() {
       }
       const result = await register(email, password, username);
       if (result.success && result.user) {
-        const loginResult = await login(email, password);
-        if (loginResult.success && loginResult.user) {
-          goToDashboard(loginResult.user);
-          setUsername('');
-          setEmail('');
-          setPassword('');
-          setConfirmPassword('');
-        } else {
-          setError(loginResult.message);
-        }
+        goToDashboard(result.user);
+        setUsername('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
       } else {
         setError(result.message);
       }

@@ -1,11 +1,7 @@
-// lib/storage.ts
+// lib/storage.ts — optional client cache (not used by main app; auth is cookie + API).
 import { Transaction, Goal } from './types';
-import { getCurrentUser } from './auth';
 
-const getStoragePrefix = () => {
-  const user = getCurrentUser();
-  return user ? `user_${user.id}_` : '';
-};
+const getStoragePrefix = () => '';
 
 export const loadTransactions = (): Transaction[] => {
   if (typeof window === 'undefined') return [];
