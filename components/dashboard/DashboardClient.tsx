@@ -167,20 +167,20 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
 
   return (
     <div className="container-custom">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-2.5">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-medium">Finance Dashboard</h1>
           <div className="mt-0.5 text-xs text-[var(--text-secondary)]">
             Welcome back, {user.username || user.email.split('@')[0]}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2.5">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+          <div className="flex w-full items-center gap-2.5 sm:w-auto">
             <span className="text-xs text-[var(--text-secondary)]">Viewing</span>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="h-9 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)]"
+              className="h-9 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] sm:w-auto sm:min-w-[12rem] sm:flex-none"
             >
               {availableMonths.map((month) => (
                 <option key={month} value={month}>
@@ -195,15 +195,15 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1.5 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-tertiary)]"
+            className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1.5 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-tertiary)] sm:w-auto"
           >
             Logout
           </button>
         </div>
       </div>
 
-      <Metrics {...metrics} />
       <TransactionForm goals={goals} onAdd={handleAddTransaction} />
+      <Metrics {...metrics} />
 
       <div className="card mb-6">
         <div className="mb-3 text-xs font-medium uppercase tracking-wide text-[var(--text-secondary)]">

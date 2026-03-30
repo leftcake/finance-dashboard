@@ -7,12 +7,26 @@ type TxCategory = 'income' | 'expense' | 'savings'
 async function resolveGoalIdForSavings(
   userId: string,
   category: TxCategory,
-  goalId: string | null | undefined
+  goalId: string | null | undefined,
+  options?: {
+    allowReachedForCurrentGoalId?: string | null
+  }
 ): Promise<string | null> {
   if (category !== 'savings') return null
   if (!goalId) return null
   const g = await prisma.goal.findFirst({ where: { id: goalId, userId } })
   if (!g) return null
+  const sum = await prisma.transaction.aggregate({
+    where: {
+      userId,
+      goalId,
+      category: 'savings',
+    } as { userId: string; goalId: string; category: 'savings' },
+    _sum: { amount: true },
+  })
+  const saved = sum._sum.amount ?? 0
+  const isReached = g.target > 0 && saved >= g.target
+  if (isReached && options?.allowReachedForCurrentGoalId !== goalId) return null
   return goalId
 }
 
@@ -53,7 +67,10 @@ export async function POST(request: Request) {
     const category = cat as TxCategory
     const resolvedGoalId = await resolveGoalIdForSavings(userId, category, goalId ?? null)
     if (category === 'savings' && goalId && !resolvedGoalId) {
-      return NextResponse.json({ error: 'Invalid savings goal' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid savings goal (goal not found or already reached)' },
+        { status: 400 }
+      )
     }
 
     const transaction = await prisma.transaction.create({
@@ -97,9 +114,14 @@ export async function PUT(request: Request) {
     }
 
     const category = cat as TxCategory
-    const resolvedGoalId = await resolveGoalIdForSavings(userId, category, goalId ?? null)
+    const resolvedGoalId = await resolveGoalIdForSavings(userId, category, goalId ?? null, {
+      allowReachedForCurrentGoalId: existing.goalId ?? null,
+    })
     if (category === 'savings' && goalId && !resolvedGoalId) {
-      return NextResponse.json({ error: 'Invalid savings goal' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid savings goal (goal not found or already reached)' },
+        { status: 400 }
+      )
     }
 
     const transaction = await prisma.transaction.update({

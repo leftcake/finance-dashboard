@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Goal } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -14,6 +15,31 @@ function goalStatusLabel(saved: number, target: number): 'reached' | 'almost' | 
   if (saved >= target) return 'reached';
   if (saved / target >= 0.9) return 'almost';
   return null;
+}
+
+function AnimatedGoalBar({ percentage }: { percentage: number }) {
+  const [displayed, setDisplayed] = useState(percentage);
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => {
+      setDisplayed(percentage);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [percentage]);
+
+  return (
+    <div className="h-2.5 overflow-hidden rounded-full bg-[var(--bg-secondary)]">
+      <div
+        className="h-full rounded-full"
+        style={{
+          width: `${displayed}%`,
+          backgroundColor: 'var(--savings)',
+          transition: 'width 900ms cubic-bezier(0.22, 1, 0.36, 1)',
+          willChange: 'width',
+        }}
+      />
+    </div>
+  );
 }
 
 export default function Goals({ goals, onAdd, onDelete }: GoalsProps) {
@@ -73,8 +99,8 @@ export default function Goals({ goals, onAdd, onDelete }: GoalsProps) {
       </p>
       <div className="mt-3 flex flex-col gap-3.5">
         {goals.map((goal) => {
-          const percentage =
-            goal.target > 0 ? Math.min(100, Math.round((goal.saved / goal.target) * 100)) : 0;
+          const rawPercentage = goal.target > 0 ? Math.min(100, (goal.saved / goal.target) * 100) : 0;
+          const percentage = Math.round(rawPercentage);
           const status = goalStatusLabel(goal.saved, goal.target);
 
           return (
@@ -94,16 +120,11 @@ export default function Goals({ goals, onAdd, onDelete }: GoalsProps) {
                   )}
                   <span className="text-xs text-[var(--text-secondary)]">
                     {formatCurrency(goal.saved)} / {formatCurrency(goal.target)} &nbsp;
-                    <span className="text-savings">{percentage}%</span>
+                    <span style={{ color: 'var(--savings)' }}>{percentage}%</span>
                   </span>
                 </div>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--bg-secondary)]">
-                <div
-                  className="h-full rounded-full bg-savings transition-all duration-300"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
+              <AnimatedGoalBar percentage={rawPercentage} />
               <div className="mt-1 flex justify-end">
                 <button
                   type="button"

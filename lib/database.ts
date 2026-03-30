@@ -114,6 +114,7 @@ export const loadGoals = async (): Promise<Goal[]> => {
       name: g.name as string,
       target: g.target as number,
       saved: (g.saved as number) ?? 0,
+      createdAt: (g.createdAt as string | undefined) ?? undefined,
     }))
   } catch (error) {
     console.error('Error loading goals:', error)
@@ -140,6 +141,7 @@ export const addGoal = async (name: string, target: number): Promise<Goal | null
       name: data.name,
       target: data.target,
       saved: data.saved ?? 0,
+      createdAt: data.createdAt ?? undefined,
     }
   } catch (error) {
     console.error('Error adding goal:', error)

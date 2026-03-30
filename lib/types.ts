@@ -21,6 +21,7 @@ export interface Goal {
   name: string;
   target: number;
   saved: number;
+  createdAt?: string;
 }
 
 export type Category = 'income' | 'expense' | 'savings';

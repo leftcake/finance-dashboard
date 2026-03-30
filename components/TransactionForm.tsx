@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Goal, TransactionSaveInput, Category } from '@/lib/types';
 import {
   INVESTMENT_DESC_PREFIX,
@@ -25,12 +25,29 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
   const [goalId, setGoalId] = useState<string>('');
 
   const presets = getDescriptionPresetsForCategory(cat);
+  const savingsGoals = useMemo(
+    () =>
+      [...goals].sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      }),
+    [goals]
+  );
 
   useEffect(() => {
     if (cat !== 'savings') {
       setGoalId('');
     }
   }, [cat]);
+
+  useEffect(() => {
+    if (!goalId) return;
+    const selectedGoal = savingsGoals.find((g) => g.id === goalId);
+    if (selectedGoal && selectedGoal.saved >= selectedGoal.target) {
+      setGoalId('');
+    }
+  }, [goalId, savingsGoals]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +91,9 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
       : cat === 'income'
         ? '收入说明'
         : '储蓄说明';
+  const labelClass = 'mb-1.5 block text-xs font-medium text-[var(--text-secondary)]';
+  const fieldClass =
+    'h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-3 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none focus:ring-1 focus:ring-[var(--border-md)]';
 
   return (
     <div className="card mb-6">
@@ -82,19 +102,19 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs text-[var(--text-secondary)]">Date</label>
+            <label className={labelClass}>Date</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none focus:ring-1 focus:ring-[var(--border-md)]"
+              className={fieldClass}
               required
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-[var(--text-secondary)]">Category</label>
+            <label className={labelClass}>Category</label>
             <select
               value={cat}
               onChange={(e) => {
@@ -103,7 +123,7 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
                 setPreset(defaultPresetForCategory(next));
                 setCustomDesc('');
               }}
-              className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none focus:ring-1 focus:ring-[var(--border-md)]"
+              className={fieldClass}
             >
               <option value="expense">Expenses</option>
               <option value="income">Income</option>
@@ -114,7 +134,7 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
             </p>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-[var(--text-secondary)]">Amount (SGD)</label>
+            <label className={labelClass}>Amount (SGD)</label>
             <input
               type="number"
               value={amount}
@@ -122,23 +142,15 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
               placeholder="0.00"
               min="0"
               step="0.01"
-              className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none focus:ring-1 focus:ring-[var(--border-md)]"
+              className={fieldClass}
               required
             />
-          </div>
-          <div className="flex items-end">
-            <button
-              type="submit"
-              className="h-9 w-full rounded-md bg-[var(--text-primary)] px-4 text-sm font-medium text-[var(--bg-primary)] transition-opacity hover:opacity-80"
-            >
-              + Add Transaction
-            </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-[var(--text-secondary)]">
+            <label className={labelClass}>
               Description — {presetLabel}
             </label>
             <select
@@ -148,7 +160,7 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
                 setPreset(v);
                 if (v !== 'Other') setCustomDesc('');
               }}
-              className="mb-2 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none"
+              className={`${fieldClass} mb-2`}
             >
               {presets.map((p) => (
                 <option key={p} value={p}>
@@ -163,33 +175,49 @@ export default function TransactionForm({ goals, onAdd }: TransactionFormProps) 
                 value={customDesc}
                 onChange={(e) => setCustomDesc(e.target.value)}
                 placeholder={`自定义说明；投资请加 ${INVESTMENT_DESC_PREFIX}，如 ${INVESTMENT_DESC_PREFIX}ETF`}
-                className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none focus:ring-1 focus:ring-[var(--border-md)]"
+                className={fieldClass}
               />
             )}
           </div>
 
-          {cat === 'savings' && goals.length > 0 && (
-            <div>
-              <label className="mb-1 block text-xs text-[var(--text-secondary)]">
-                计入储蓄目标（可选）
-              </label>
-              <select
-                value={goalId}
-                onChange={(e) => setGoalId(e.target.value)}
-                className="h-9 w-full rounded-md border border-[var(--border)] bg-[var(--bg-secondary)] px-2.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-md)] focus:outline-none"
-              >
-                <option value="">不关联目标</option>
-                {goals.map((g) => (
-                  <option key={g.id} value={g.id}>
+          <div>
+            <label className={labelClass}>计入储蓄目标（可选）</label>
+            <select
+              value={cat === 'savings' ? goalId : ''}
+              onChange={(e) => setGoalId(e.target.value)}
+              disabled={cat !== 'savings' || savingsGoals.length === 0}
+              className={`${fieldClass} disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              <option value="">
+                {cat === 'savings'
+                  ? savingsGoals.length > 0
+                    ? '不关联目标'
+                    : '暂无可用储蓄目标'
+                  : '仅 Savings 分类可选'}
+              </option>
+              {savingsGoals.map((g) => {
+                const isReached = g.target > 0 && g.saved >= g.target;
+                return (
+                  <option key={g.id} value={g.id} disabled={isReached}>
                     {g.name}
+                    {isReached ? ' (已达标，不可选)' : ''}
                   </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                目标进度 = 所有关联本条目标的 Savings 金额合计。
-              </p>
-            </div>
-          )}
+                );
+              })}
+            </select>
+            <p className="mt-1 text-xs text-[var(--text-secondary)]">
+              目标进度 = 所有关联本条目标的 Savings 金额合计。
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-stretch sm:justify-start">
+          <button
+            type="submit"
+            className="h-9 w-full rounded-md bg-[var(--text-primary)] px-4 text-sm font-medium text-[var(--bg-primary)] transition-opacity hover:opacity-80 sm:w-auto sm:min-w-[12rem]"
+          >
+            + Add Transaction
+          </button>
         </div>
       </form>
     </div>

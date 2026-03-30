@@ -3,9 +3,9 @@ import type { NextRequest } from 'next/server'
 
 /**
  * Baseline security headers for HTML + API responses.
- * Session stays in HttpOnly cookie; middleware does not read DB.
+ * Session stays in HttpOnly cookie; proxy does not read DB.
  */
-export function middleware(_request: NextRequest) {
+export function proxy(_request: NextRequest) {
   const res = NextResponse.next()
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
