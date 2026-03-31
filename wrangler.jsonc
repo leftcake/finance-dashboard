@@ -7,6 +7,10 @@
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	"build": {
+		// Ensure deploy always has compiled OpenNext artifacts in CI.
+		"command": "npm run build:cf"
+	},
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"

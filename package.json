@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "prisma generate && next build",
+    "build:cf": "opennextjs-cloudflare build",
     "dev": "prisma generate && next dev",
     "start": "next start",
     "lint": "next lint",
