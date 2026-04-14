@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Metrics from '@/components/Metrics';
 import TransactionForm from '@/components/TransactionForm';
 import Charts from '@/components/Charts';
+import TopToast from '@/components/TopToast';
 import TransactionList from '@/components/TransactionList';
 import Goals from '@/components/Goals';
 import { Transaction, Goal, type TransactionSaveInput } from '@/lib/types';
@@ -25,6 +26,7 @@ import {
   prepareMonthlyChartData,
   prepareMonthlyInvestmentChartData,
   prepareBreakdownData,
+  prepareBreakdownDataAllCategories,
 } from '@/lib/utils';
 
 export interface DashboardUser {
@@ -40,6 +42,8 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
   const [selectedMonth, setSelectedMonth] = useState('');
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [addTransactionToast, setAddTransactionToast] = useState<string | null>(null);
+  const toastClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadUserData = useCallback(async () => {
     try {
@@ -64,6 +68,12 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
     loadUserData();
   }, [user.id, loadUserData]);
 
+  useEffect(() => {
+    return () => {
+      if (toastClearRef.current) clearTimeout(toastClearRef.current);
+    };
+  }, []);
+
   const handleLogout = async () => {
     await logoutSession();
     router.replace('/login');
@@ -74,12 +84,7 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
   const chartMonths = availableMonths.slice(0, 6).reverse();
   const monthlyDataAll = prepareMonthlyChartData(transactions, chartMonths);
   const monthlyDataInvestment = prepareMonthlyInvestmentChartData(transactions, chartMonths);
-  const breakdownDataAll = prepareBreakdownData(
-    metrics.income,
-    metrics.expense,
-    metrics.savings,
-    metrics.investment
-  );
+  const breakdownDataAll = prepareBreakdownDataAllCategories(filteredTransactions);
   const investmentMonthTxs = filteredTransactions.filter((t) => t.isInvestment);
   const invMonthMetrics = calculateMetrics(investmentMonthTxs);
   const breakdownDataInvestment = prepareBreakdownData(
@@ -104,6 +109,12 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
         return next;
       });
       setGoals(await loadGoals());
+      if (toastClearRef.current) clearTimeout(toastClearRef.current);
+      setAddTransactionToast('已添加记账');
+      toastClearRef.current = setTimeout(() => {
+        setAddTransactionToast(null);
+        toastClearRef.current = null;
+      }, 1000);
     }
   };
 
@@ -166,7 +177,9 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
   }
 
   return (
-    <div className="container-custom">
+    <>
+      <TopToast message={addTransactionToast} />
+      <div className="container-custom">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-medium">Finance Dashboard</h1>
@@ -227,5 +240,6 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
         viewingMonthLabel={viewingMonthLabel}
       />
     </div>
+    </>
   );
 }

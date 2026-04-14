@@ -250,7 +250,7 @@ export default function Charts({
           <BreakdownPie
             data={breakdownDataAll}
             title="This month — all categories"
-            subtitle={viewingMonthLabel}
+            subtitle={`${viewingMonthLabel} · 日常支出：Eat/Drink→饮食，Bus/MRT→交通，Rental fee→房租，其余→其他`}
             emptyHint="No flows this month."
           />
         </div>

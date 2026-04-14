@@ -1,4 +1,4 @@
-import { Transaction, MonthlyData } from './types';
+import { Transaction, MonthlyData, type BreakdownSlice } from './types';
 
 /** 列表：按记账时间（创建时间）最新在前 */
 export function sortTransactionsByRecordedAt(transactions: Transaction[]): Transaction[] {
@@ -151,6 +151,57 @@ export const prepareBreakdownData = (
   return [
     { name: '收入 Income', value: income, color: '#5DCAA5' },
     { name: '支出 Expense', value: expense, color: '#F0997B' },
+    { name: '储蓄 Savings', value: savings, color: '#85B7EB' },
+    { name: '投资 Investment', value: investment, color: '#7C3AED' },
+  ].filter((item) => item.value > 0);
+};
+
+const FOOD_DESC_KEYS = new Set(['eat', 'drink']);
+const TRANSPORT_DESC_KEYS = new Set(['bus', 'mrt']);
+
+/** 日常支出：首词不区分大小写；Rental fee 首词 rental 或说明以 rental fee 开头 → 房租，其余规则同上 */
+function expenseSubcategoryFromDescription(desc: string): 'food' | 'transport' | 'rental' | 'other' {
+  const trimmed = desc.trim();
+  const lower = trimmed.toLowerCase();
+  const first = trimmed.split(/\s+/)[0] ?? '';
+  const key = first.toLowerCase();
+  if (key === 'rental' || lower.startsWith('rental fee')) return 'rental';
+  if (FOOD_DESC_KEYS.has(key)) return 'food';
+  if (TRANSPORT_DESC_KEYS.has(key)) return 'transport';
+  return 'other';
+}
+
+/** 「本月全部分类」饼图：支出拆成饮食 / 交通 / 房租 / 其他，口径与 calculateMetrics 一致 */
+export const prepareBreakdownDataAllCategories = (monthTxs: Transaction[]): BreakdownSlice[] => {
+  const inv = (t: Transaction) => !!t.isInvestment;
+
+  const income = monthTxs.filter((t) => t.cat === 'income').reduce((s, t) => s + t.amt, 0);
+  const savings = monthTxs
+    .filter((t) => t.cat === 'savings' && !inv(t))
+    .reduce((s, t) => s + t.amt, 0);
+  const investment = monthTxs
+    .filter((t) => inv(t) && (t.cat === 'expense' || t.cat === 'savings'))
+    .reduce((s, t) => s + t.amt, 0);
+
+  let food = 0;
+  let transport = 0;
+  let rental = 0;
+  let otherExpense = 0;
+  for (const t of monthTxs) {
+    if (t.cat !== 'expense' || inv(t)) continue;
+    const sub = expenseSubcategoryFromDescription(t.desc);
+    if (sub === 'food') food += t.amt;
+    else if (sub === 'transport') transport += t.amt;
+    else if (sub === 'rental') rental += t.amt;
+    else otherExpense += t.amt;
+  }
+
+  return [
+    { name: '收入 Income', value: income, color: '#5DCAA5' },
+    { name: '饮食 Dining', value: food, color: '#EC4899' },
+    { name: '交通 Transport', value: transport, color: '#E8886A' },
+    { name: '房租 Rental fee', value: rental, color: '#9CA3AF' },
+    { name: '其他 Other', value: otherExpense, color: '#D97B5C' },
     { name: '储蓄 Savings', value: savings, color: '#85B7EB' },
     { name: '投资 Investment', value: investment, color: '#7C3AED' },
   ].filter((item) => item.value > 0);

@@ -1,7 +1,7 @@
 import type { Category } from '@/lib/types';
 
-/** 支出：餐饮、交通 */
-export const EXPENSE_DESCRIPTION_PRESETS = ['Eat', 'Drink', 'Bus', 'MRT'] as const;
+/** 支出：餐饮、交通、房租 */
+export const EXPENSE_DESCRIPTION_PRESETS = ['Eat', 'Drink', 'Bus', 'MRT', 'Rental fee'] as const;
 
 /** 收入：工资、奖金等 */
 export const INCOME_DESCRIPTION_PRESETS = [
