@@ -47,18 +47,22 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
 
   const loadUserData = useCallback(async () => {
     try {
-      const [loadedTxs, loadedGoals] = await Promise.all([loadTransactions(), loadGoals()]);
+      const txPromise = loadTransactions();
+      const goalsPromise = loadGoals();
+      const loadedTxs = await txPromise;
       setTransactions(loadedTxs);
-      setGoals(loadedGoals);
       const months = getAvailableMonths(loadedTxs);
       setAvailableMonths(months);
       if (months.length > 0) {
         setSelectedMonth(months[0]);
       }
+      setLoading(false);
+      goalsPromise
+        .then((loadedGoals) => setGoals(loadedGoals))
+        .catch(() => setGoals([]));
     } catch {
       setTransactions([]);
       setGoals([]);
-    } finally {
       setLoading(false);
     }
   }, []);
@@ -108,13 +112,17 @@ export default function DashboardClient({ user }: { user: DashboardUser }) {
         setAvailableMonths(getAvailableMonths(next));
         return next;
       });
-      setGoals(await loadGoals());
       if (toastClearRef.current) clearTimeout(toastClearRef.current);
       setAddTransactionToast('已添加记账');
       toastClearRef.current = setTimeout(() => {
         setAddTransactionToast(null);
         toastClearRef.current = null;
       }, 1000);
+      loadGoals()
+        .then((nextGoals) => setGoals(nextGoals))
+        .catch(() => {
+          /* keep existing goals when refresh fails */
+        });
     }
   };
 

@@ -20,16 +20,31 @@ async function goalsWithComputedSaved(userId: string) {
     where: { userId },
     orderBy: { createdAt: 'desc' },
   })
-  const out = await Promise.all(
-    goals.map(async (g) => ({
-      id: g.id,
-      name: g.name,
-      target: g.target,
-      saved: await savingsSumForGoal(userId, g.id),
-      createdAt: g.createdAt,
-    }))
+  if (goals.length === 0) return []
+
+  const savingsByGoal = await prisma.transaction.groupBy({
+    by: ['goalId'],
+    where: {
+      userId,
+      category: 'savings',
+      goalId: { not: null },
+    } as { userId: string; category: 'savings'; goalId: { not: null } },
+    _sum: { amount: true },
+  })
+
+  const savedMap = new Map<string, number>(
+    savingsByGoal
+      .filter((row) => typeof row.goalId === 'string')
+      .map((row) => [row.goalId as string, row._sum.amount ?? 0])
   )
-  return out
+
+  return goals.map((g) => ({
+    id: g.id,
+    name: g.name,
+    target: g.target,
+    saved: savedMap.get(g.id) ?? 0,
+    createdAt: g.createdAt,
+  }))
 }
 
 export async function GET() {

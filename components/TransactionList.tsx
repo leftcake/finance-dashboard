@@ -31,8 +31,10 @@ export default function TransactionList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<TransactionSaveInput | null>(null);
   const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const sorted = sortTransactionsByRecordedAt(transactions);
+  const visibleTransactions = expanded ? sorted : sorted.slice(0, 10);
   const sortedGoals = useMemo(
     () =>
       [...goals].sort((a, b) => {
@@ -102,7 +104,7 @@ export default function TransactionList({
           </tr>
         </thead>
         <tbody>
-          {sorted.map((tx) => {
+          {visibleTransactions.map((tx) => {
             const isEditing = editingId === tx.id && draft;
 
             if (isEditing && draft) {
@@ -255,7 +257,15 @@ export default function TransactionList({
                     </div>
                   )}
                 </td>
-                <td className="border-b border-[var(--border)] p-1.5 text-right">
+                <td
+                  className={`border-b border-[var(--border)] p-1.5 text-right ${
+                    tx.amt > 150
+                      ? tx.cat === 'income'
+                        ? 'font-semibold text-[#0F6E56]'
+                        : 'font-semibold text-red-600'
+                      : ''
+                  }`}
+                >
                   {formatCurrency(tx.amt)}
                 </td>
                 <td className="border-b border-[var(--border)] p-1.5">
@@ -281,10 +291,21 @@ export default function TransactionList({
           })}
         </tbody>
         </table>
+        {sorted.length > 10 && (
+          <div className="mt-3 text-right">
+            <button
+              type="button"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="text-xs text-[#378ADD] hover:underline"
+            >
+              {expanded ? 'Collapse (latest 10)' : 'Expand (all this month)'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-3 md:hidden">
-        {sorted.map((tx) => {
+        {visibleTransactions.map((tx) => {
           const isEditing = editingId === tx.id && draft;
 
           if (isEditing && draft) {
@@ -386,7 +407,17 @@ export default function TransactionList({
             <div key={tx.id} className="rounded-lg border border-[var(--border)] bg-[var(--bg-primary)] p-3">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="text-sm font-medium">{tx.desc}</div>
-                <div className="text-sm font-semibold">{formatCurrency(tx.amt)}</div>
+                <div
+                  className={`text-sm font-semibold ${
+                    tx.amt > 150
+                      ? tx.cat === 'income'
+                        ? 'text-[#0F6E56]'
+                        : 'text-red-600'
+                      : ''
+                  }`}
+                >
+                  {formatCurrency(tx.amt)}
+                </div>
               </div>
               <div className="mb-2 flex flex-wrap items-center gap-1.5">
                 <span
@@ -433,6 +464,17 @@ export default function TransactionList({
             </div>
           );
         })}
+        {sorted.length > 10 && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="text-xs text-[#378ADD] hover:underline"
+            >
+              {expanded ? 'Collapse (latest 10)' : 'Expand (all this month)'}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
